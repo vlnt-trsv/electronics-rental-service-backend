@@ -1,8 +1,4 @@
 node_modules
-structure-backend.txt
-
-authentification/
-
 uploads
 *.env
 
