@@ -1,3 +1,4 @@
+## Структура проекта
 project-name/
 |-- node_modules/
 |-- models/
@@ -27,41 +28,6 @@ project-name/
 |-- package-lock.json
 |-- README.md
 |-- server.js
-
-
-Конечно, вот пример структуры проекта на Node.js, как если бы вы видели её в редакторе Visual Studio Code:
-
-```
-project-name/
-|-- node_modules/
-|-- models/
-|   |-- user.js
-|   |-- product.js
-|-- controllers/
-|   |-- userController.js
-|   |-- productController.js
-|-- routes/
-|   |-- userRoutes.js
-|   |-- productRoutes.js
-|-- middlewares/
-|   |-- authMiddleware.js
-|   |-- errorMiddleware.js
-|-- services/
-|   |-- userService.js
-|   |-- productService.js
-|-- utils/
-|   |-- apiFeatures.js
-|   |-- catchAsync.js
-|-- tests/
-|   |-- user.test.js
-|   |-- product.test.js
-|-- .env
-|-- .gitignore
-|-- package.json
-|-- package-lock.json
-|-- README.md
-|-- server.js
-```
 
 В этой структуре:
 
