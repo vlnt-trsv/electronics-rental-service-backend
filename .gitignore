@@ -3,4 +3,7 @@ structure-backend.txt
 
 authentification/
 
+uploads
+*.env
+
 !README.md  
