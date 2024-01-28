@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  app:
+    container_name: "ers-api"
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    ports:
+      - "3000:5000"
