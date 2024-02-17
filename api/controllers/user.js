@@ -1,91 +1,100 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-
+require("dotenv").config();
 const User = require("../models/user");
 
-// Создание нового пользователя
-exports.user_singup = (req, res, next) => {
-  User.find({ email: req.body.email })
+// Получение списка всех пользователей
+exports.user_get_all = (req, res, next) => {
+  User.find()
+    .select("email _id")
     .exec()
-    .then((user) => {
-      if (user.length >= 1) {
-        return res.status(409).json({
-          message: "Почта уже существует!",
-        });
-      } else {
-        bcrypt.hash(req.body.password, 10, (err, hash) => {
-          if (err) {
-            return res.status(500).json({
-              error: err,
-            });
-          } else {
-            const user = new User({
-              _id: new mongoose.Types.ObjectId(),
-              nickname: req.body.nickname,
-              email: req.body.email,
-              password: hash,
-            });
-            user
-              .save()
-              .then((result) => {
-                console.log(result);
-                res.status(201).json({
-                  message: "Пользователь создан!",
-                });
-              })
-              .catch((err) => {
-                console.error(err);
-                res.status(500).json({ error: err });
-              });
-          }
-        });
-      }
-    })
-    .catch();
-};
-
-// Логин пользователя
-exports.user_login = (req, res, next) => {
-  User.find({ email: req.body.email })
-    .exec()
-    .then((user) => {
-      if (user.length < 1) {
-        return res.status(401).json({
-          message: "Неверная почта или пароль!",
-        });
-      }
-      bcrypt.compare(req.body.password, user[0].password, (err, result) => {
-        if (err) {
-          return res.status(401).json({
-            message: "Неверная почта или пароль!",
-          });
-        }
-        if (result) {
-          const token = jwt.sign(
-            {
-              email: user[0].email,
-              userId: user[0]._id,
+    .then((docs) => {
+      res.status(200).json({
+        count: docs.length,
+        users: docs.map((doc) => {
+          return {
+            _id: doc._id,
+            email: doc.email,
+            nickname: doc.nickname,
+            request: {
+              type: "GET",
+              url: "http://localhost:5000/api/v1/user/" + doc._id,
             },
-            process.env.JWT_KEY,
-            {
-              expiresIn: "1h",
-            }
-          );
-          return res.status(200).json({
-            message: "Пользователь вошел в систему!",
-            token: token,
-          });
-        }
-        res.status(401).json({
-          message: "Неверная почта или пароль!",
-        });
+          };
+        }),
       });
     })
     .catch((err) => {
-      console.log(err);
       res.status(500).json({ error: err });
     });
+};
+
+// Получение определённого пользователя
+exports.user_get_user = (req, res, next) => {
+  User.findById(req.params.userId)
+    .exec()
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      const userData = {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        patronymic: user.patronymic,
+        phone: user.phone,
+        consentToPrivacyPolicy: user.consentToPrivacyPolicy,
+        consentToDataProcessing: user.consentToDataProcessing,
+        consentToReceiveNotifications: user.consentToReceiveNotifications,
+        verificationCode: user.verificationCode,
+      };
+
+      res.status(200).json({
+        user: userData,
+        request: {
+          type: "GET",
+          url: "http://localhost:5000/api/v1/user",
+        },
+      });
+    })
+    .catch((err) => {
+      res.status(500).json({ error: err });
+    });
+};
+
+// Обновление данных пользователя
+exports.user_update = async (req, res) => {
+  const userId = req.params.userId;
+  console.log("Updating user with ID:", userId);
+  console.log("Request body:", req.body);
+
+  try {
+    const existingUser = await User.findById(userId);
+    console.log("Existing user:", existingUser);
+
+    if (!existingUser) {
+      console.log("User not found");
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    Object.keys(req.body).forEach((field) => {
+      existingUser[field] = req.body[field];
+    });
+
+    try {
+      const updatedUser = await existingUser.save();
+      console.log("User updated successfully:", updatedUser);
+      res.status(200).json({ message: "User data updated successfully" });
+    } catch (error) {
+      console.error("Error saving updated user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  } catch (error) {
+    console.error("Error updating user data:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
 
 // Удаление пользователя
@@ -93,12 +102,18 @@ exports.user_delete = (req, res, next) => {
   User.deleteOne({ _id: req.params.userId })
     .exec()
     .then((result) => {
+      if (result.deletedCount === 0) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
       res.status(200).json({
-        message: "Пользователь удалён!",
+        message: "Пользователь успешно удален",
+        deletedUserId: req.params.userId,
       });
     })
     .catch((err) => {
-      console.error(err);
-      res.status(500).json({ error: err });
+      console.error("Error occurred while deleting user:", err);
+      res.status(500).json({ error: "Internal server error" });
     });
 };

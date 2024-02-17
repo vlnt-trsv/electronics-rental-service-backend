@@ -6,4 +6,6 @@ const PORT = process.env.PORT;
 
 const server = http.createServer(app);
 
-server.listen(PORT);
+server.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
+  });
