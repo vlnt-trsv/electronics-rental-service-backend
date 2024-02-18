@@ -48,7 +48,6 @@ const handleLogin = async (req, res) => {
 
     res.status(200).json({
       message: "Код подтверждения отправлен на ваш email",
-      code: verificationCode, // Удалить позже
     });
   } catch (error) {
     console.error("Error occurred:", error);

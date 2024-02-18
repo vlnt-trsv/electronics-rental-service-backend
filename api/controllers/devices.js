@@ -4,7 +4,8 @@ const Device = require("../models/device");
 // Получение списка всех продуктов
 exports.devices_get_all = (req, res, next) => {
   Device.find()
-    .select("name price _id deviceImage")
+    .select("name price _id deviceImage categoryId")
+    .populate("categoryId", "name")
     .exec()
     .then((docs) => {
       const response = {
@@ -15,6 +16,7 @@ exports.devices_get_all = (req, res, next) => {
             price: doc.price,
             _id: doc._id,
             deviceImage: doc.deviceImage,
+            category: doc.categoryId,
             request: {
               type: "GET",
               url: "http://localhost:5000/api/v1/devices/" + doc._id,
@@ -43,6 +45,7 @@ exports.devices_create_device = (req, res, next) => {
     name: req.body.name,
     price: req.body.price,
     deviceImage: req.file.path,
+    categoryId: req.body.categoryId,
   });
   device
     .save()
@@ -55,6 +58,7 @@ exports.devices_create_device = (req, res, next) => {
           name: result.name,
           price: result.price,
           deviceImage: result.deviceImage,
+          category: result.categoryId,
           request: {
             type: "POST",
             url: "http://localhost:5000/api/v1/devices/" + result._id,
@@ -72,7 +76,8 @@ exports.devices_create_device = (req, res, next) => {
 exports.devices_get_device = (req, res, next) => {
   const id = req.params.deviceId;
   Device.findById(id)
-    .select("name price _id deviceImage")
+    .select("name price _id deviceImage categoryId")
+    .populate("categoryId", "name")
     .exec()
     .then((doc) => {
       console.log("From DB:", doc);
@@ -97,7 +102,7 @@ exports.devices_get_device = (req, res, next) => {
 };
 
 // Обновление продукта
-exports.devices_update_device= (req, res, next) => {
+exports.devices_update_device = (req, res, next) => {
   const id = req.params.deviceId;
   const updateOps = req.body;
 
