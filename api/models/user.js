@@ -2,26 +2,23 @@ const mongoose = require("mongoose");
 
 const userSchema = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
-  roles: {
-    User: {
-      type: Number,
-      default: 2001,
-    },
-    Editor: Number,
-    Admin: Number,
-  },
-  refreshTokens: [
-    {
-      type: String,
-    },
-  ],
-  accessToken: {
+  role: {
     type: String,
-    default: null,
+    enum: ["User", "Editor", "Admin"],
+    default: "User",
   },
+  // refreshTokens: [
+  //   {
+  //     type: String,
+  //   },
+  // ],
+  // accessToken: {
+  //   type: String,
+  //   default: null,
+  // },
   firstName: {
     type: String,
-    default: "null", // или любое другое значение по умолчанию
+    default: "null",
   },
   lastName: {
     type: String,
@@ -53,10 +50,6 @@ const userSchema = mongoose.Schema({
   consentToReceiveNotifications: {
     type: Boolean,
     default: false,
-  },
-  verificationCode: {
-    type: String,
-    default: null,
   },
 });
 

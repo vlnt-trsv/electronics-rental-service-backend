@@ -1,14 +1,19 @@
-const jwt = require("jsonwebtoken");
-
 module.exports = (req, res, next) => {
-  try {
-    const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_KEY);
-    req.userData = decoded;
+  if (req.session.authorized) {
+    // Удаляем ошибку, если она была установлена ранее
+    delete req.session.error;
+
+    // Устанавливаем сообщение об успешном доступе
+    req.session.success = "Доступ разрешён";
     next();
-  } catch (error) {
-    return res.status(401).json({
-      message: "Auth failed",
-    });
+  } else {
+    // Проверяем наличие предыдущей ошибки и удаляем ее
+    if (req.session.error) {
+      delete req.session.error;
+    }
+
+    // Устанавливаем сообщение об ошибке
+    req.session.error = "Сперва, вы должны войти в систему";
+    res.redirect("/api/v1/login");
   }
 };

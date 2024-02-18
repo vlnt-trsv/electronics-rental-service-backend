@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 
-const orderSchema = mongoose.Schema({
+const rentalSchema = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
-  product: {
+  device: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
+    ref: "Device",
     required: true,
   },
   quantity: { type: Number, default: 1 },
 });
 
-module.exports = mongoose.model("Order", orderSchema);
+module.exports = mongoose.model("Rental", rentalSchema);

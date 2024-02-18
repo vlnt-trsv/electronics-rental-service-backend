@@ -1,23 +1,23 @@
-const Product = require("../models/product");
 const mongoose = require("mongoose");
+const Device = require("../models/device");
 
 // Получение списка всех продуктов
-exports.products_get_all = (req, res, next) => {
-  Product.find()
-    .select("name price _id productImage")
+exports.devices_get_all = (req, res, next) => {
+  Device.find()
+    .select("name price _id deviceImage")
     .exec()
     .then((docs) => {
       const response = {
         count: docs.length,
-        products: docs.map((doc) => {
+        devices: docs.map((doc) => {
           return {
             name: doc.name,
             price: doc.price,
             _id: doc._id,
-            productImage: doc.productImage,
+            deviceImage: doc.deviceImage,
             request: {
               type: "GET",
-              url: "http://localhost:5000/products/" + doc._id,
+              url: "http://localhost:5000/api/v1/devices/" + doc._id,
             },
           };
         }),
@@ -37,26 +37,27 @@ exports.products_get_all = (req, res, next) => {
 };
 
 // Создание нового продукта
-exports.products_create_product = (req, res, next) => {
-  const product = new Product({
+exports.devices_create_device = (req, res, next) => {
+  const device = new Device({
     _id: new mongoose.Types.ObjectId(),
     name: req.body.name,
     price: req.body.price,
-    productImage: req.file.path,
+    deviceImage: req.file.path,
   });
-  product
+  device
     .save()
     .then((result) => {
       console.log(result);
       res.status(201).json({
-        message: "Created product successfully",
-        createdProduct: {
+        message: "Created device successfully",
+        createdDevice: {
           _id: result._id,
           name: result.name,
           price: result.price,
+          deviceImage: result.deviceImage,
           request: {
             type: "POST",
-            url: "http://localhost:5000/products/" + result._id,
+            url: "http://localhost:5000/api/v1/devices/" + result._id,
           },
         },
       });
@@ -68,19 +69,19 @@ exports.products_create_product = (req, res, next) => {
 };
 
 // Получение детальной информации о конкретном продукте
-exports.products_get_product = (req, res, next) => {
-  const id = req.params.productId;
-  Product.findById(id)
-    .select("name price _id productImage")
+exports.devices_get_device = (req, res, next) => {
+  const id = req.params.deviceId;
+  Device.findById(id)
+    .select("name price _id deviceImage")
     .exec()
     .then((doc) => {
       console.log("From DB:", doc);
       if (doc) {
         res.status(200).json({
-          product: doc,
+          device: doc,
           request: {
             type: "GET",
-            url: "http://localhost:5000/products",
+            url: "http://localhost:5000/api/v1/devices",
           },
         });
       } else {
@@ -96,29 +97,28 @@ exports.products_get_product = (req, res, next) => {
 };
 
 // Обновление продукта
-exports.products_update_product = (req, res, next) => {
-  const id = req.params.productId;
-  const updateOps = {};
-  for (const ops of req.body) {
-    updateOps[ops.propName] = ops.value;
-  }
-  Product.updateOne({ _id: id }, { $set: updateOps })
+exports.devices_update_device= (req, res, next) => {
+  const id = req.params.deviceId;
+  const updateOps = req.body;
+
+  Device.findByIdAndUpdate(id, { $set: updateOps }, { new: true })
     .exec()
-    .then((result) => {
-      if (result) {
+    .then((updatedDevice) => {
+      if (updatedDevice) {
         res.status(200).json({
-          message: "Product updated successfully",
+          message: "Device updated successfully",
+          device: updatedDevice,
           request: {
             type: "GET",
-            url: "http://localhost:5000/products/" + id,
+            url: "http://localhost:5000/api/v1/devices/" + id,
           },
         });
       } else {
         res.status(404).json({
-          message: "Product not found",
+          message: "Device not found",
           request: {
             type: "GET",
-            url: "http://localhost:5000/products/" + id,
+            url: "http://localhost:5000/api/v1/devices/" + id,
           },
         });
       }
@@ -129,26 +129,26 @@ exports.products_update_product = (req, res, next) => {
     });
 };
 
-exports.products_delete_product = (req, res, next) => {
-  const id = req.params.productId;
-  Product.deleteOne({ _id: id })
+exports.devices_delete_device = (req, res, next) => {
+  const id = req.params.deviceId;
+  Device.deleteOne({ _id: id })
     .exec()
     .then((result) => {
       if (result.deletedCount === 1) {
         res.status(200).json({
-          message: "Product deleted successfully",
+          message: "Device deleted successfully",
           request: {
             type: "POST",
-            url: "http://localhost:5000/products/" + id,
+            url: "http://localhost:5000/api/v1/devices/" + id,
             body: { name: "String", price: "Number" },
           },
         });
       } else {
         res.status(404).json({
-          message: "Product not found",
+          message: "Device not found",
           request: {
             type: "POST",
-            url: "http://localhost:5000/products/" + id,
+            url: "http://localhost:5000/api/v1/devices/" + id,
             body: { name: "String", price: "Number" },
           },
         });

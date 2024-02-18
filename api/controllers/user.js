@@ -48,7 +48,6 @@ exports.user_get_user = (req, res, next) => {
         consentToPrivacyPolicy: user.consentToPrivacyPolicy,
         consentToDataProcessing: user.consentToDataProcessing,
         consentToReceiveNotifications: user.consentToReceiveNotifications,
-        verificationCode: user.verificationCode,
       };
 
       res.status(200).json({
@@ -80,7 +79,9 @@ exports.user_update = async (req, res) => {
     }
 
     Object.keys(req.body).forEach((field) => {
-      existingUser[field] = req.body[field];
+      if (field !== "refreshTokens") {
+        existingUser[field] = req.body[field];
+      }
     });
 
     try {

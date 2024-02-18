@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const checkAuth = require("../middlewares/check-auth");
-const ProductsController = require("../controllers/products");
+const DevicesController = require("../controllers/devices");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -30,21 +30,24 @@ const upload = multer({
   fileFilter: fileFilter,
 });
 
-const Product = require("../models/product");
-
 // Получение списка всех продуктов
-router.get("/", ProductsController.products_get_all);
+router.get("/", checkAuth, DevicesController.devices_get_all);
 
 // Создание нового продукта
-router.post("/", checkAuth, upload.single("productImage"), ProductsController.products_create_product);
+router.post(
+  "/",
+  checkAuth,
+  upload.single("deviceImage"),
+  DevicesController.devices_create_device
+);
 
 // Получение детальной информации о конкретном продукте
-router.get("/:productId", ProductsController.products_get_product);
+router.get("/:deviceId", checkAuth, DevicesController.devices_get_device);
 
 // Обновление продукта
-router.patch("/:productId", checkAuth, ProductsController.products_update_product);
+router.patch("/:deviceId", checkAuth, DevicesController.devices_update_device);
 
 // Удаление продукта
-router.delete("/:productId", checkAuth, ProductsController.products_delete_product);
+router.delete("/:deviceId", checkAuth, DevicesController.devices_delete_device);
 
 module.exports = router;

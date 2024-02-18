@@ -2,7 +2,6 @@ require("dotenv").config();
 
 const User = require("../models/user");
 const VerificationCode = require("../models/verificationCode");
-const jwt = require("jsonwebtoken");
 const mailer = require("../nodemailer");
 const mongoose = require("mongoose");
 
@@ -49,6 +48,7 @@ const handleLogin = async (req, res) => {
 
     res.status(200).json({
       message: "Код подтверждения отправлен на ваш email",
+      code: verificationCode, // Удалить позже
     });
   } catch (error) {
     console.error("Error occurred:", error);
@@ -76,6 +76,10 @@ const verifyCode = async (req, res) => {
         message: "Пользователь не найден",
       });
     }
+    if (user) {
+      req.session.user = user;
+      req.session.authorized = true;
+    }
 
     const storedCodeRecord = await VerificationCode.findOne({
       userId: user._id,
@@ -88,58 +92,24 @@ const verifyCode = async (req, res) => {
           "Неправильный код подтверждения или код не найден в базе данных",
       });
     }
-    // Проверка наличия свойства jwt в req.cookies
-    const refreshToken = req.cookies?.jwt;
-    console.log("RefreshToken",refreshToken);
-
-    // Удаляем старые refresh токены
-    if (refreshToken) {
-      user.refreshTokens = user.refreshTokens.filter(
-        (rt) => rt !== refreshToken
-      );
-    }
-
-    const accessToken = jwt.sign(
-      {
-        _id: user._id,
-        email: user.email,
-      },
-      process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "10s" }
-    );
-
-    const newRefreshToken = jwt.sign(
-      {
-        _id: user._id,
-        email: user.email,
-      },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    // Сохраняем новый refresh токен в базе данных
-    user.refreshTokens.push(newRefreshToken);
-    await user.save();
-
-    // Устанавливаем cookie с новым refresh токеном
-    res.cookie("accessToken", newRefreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "None",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-    console.log("NewRefreshToken",newRefreshToken);
 
     await VerificationCode.deleteOne({ _id: storedCodeRecord._id });
+
+    // // Установка данных пользователя в сессию
+    // req.session.user = {
+    //   _id: user._id,
+    //   email: user.email,
+    // };
+    // req.session.authorized = true
 
     res.status(200).json({
       message: "Успешный вход в систему!",
       _id: user._id,
       email: user.email,
-      accessToken: accessToken,
-      refreshToken: newRefreshToken,
+      sessionId: req.session.id,
+      sessionUser: req.session.user,
+      sessionAuth: req.session.authorized,
     });
-
   } catch (error) {
     console.error("Error occurred while verifying code:", error);
     res.status(500).json({
