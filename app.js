@@ -1,19 +1,17 @@
 require("dotenv").config();
 
-const express = require("express"),
-  app = express(),
-  session = require("express-session"),
-  cookieParser = require("cookie-parser");
+const express = require("express");
+const app = express();
+const session = require("express-session");
+const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
 const mongoSessionDB = require("connect-mongodb-session")(session);
 
-// Swagger
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./swagger/swaggerSpec");
 
 // Routes
+const categoryRoutes = require('./api/routes/category');
 const devicesRoutes = require("./api/routes/devices");
 const rentalsRoutes = require("./api/routes/rentals");
 const userRoutes = require("./api/routes/user");
@@ -58,8 +56,6 @@ app.use(
   })
 );
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 // CORS Headers
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "http://localhost:5000");
@@ -75,6 +71,7 @@ app.use((req, res, next) => {
 });
 
 const apiUrl = "/api/v1";
+app.use(`${apiUrl}/categories`, categoryRoutes);
 app.use(`${apiUrl}/devices`, devicesRoutes);
 app.use(`${apiUrl}/rentals`, rentalsRoutes);
 app.use(`${apiUrl}/user`, userRoutes);
