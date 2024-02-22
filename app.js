@@ -17,7 +17,7 @@ const rentalsRoutes = require("./api/routes/rentals");
 const userRoutes = require("./api/routes/user");
 const authRoutes = require("./api/routes/auth");
 const logoutRoutes = require("./api/routes/logout");
-const adminRoutes = require("./api/routes/admin");
+// const adminRoutes = require("./api/routes/admin");
 
 mongoose
   .connect(process.env.DB_URL)
@@ -30,7 +30,22 @@ mongoose
 
 mongoose.Promise = global.Promise;
 app.set("view engine", "ejs");
-app.use(cors({ credentials: true, origin: "http://localhost:5000" }));
+app.use(
+  cors({
+    credentials: true,
+    origin: "http://localhost:5000",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-SESSION-ID",
+      "X-SESSION-USER",
+    ],
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -38,37 +53,25 @@ app.use("/uploads", express.static("uploads"));
 
 // Настройка сессии
 app.use(cookieParser());
+
+const sessionStore = new mongoSessionDB({
+  uri: process.env.DB_URL,
+  collection: "sessions",
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
-    resave: false, // сохранять сессию, если нет изменений
-    saveUninitialized: false, // cохранять сессию, даже если она не была изменена
+    resave: false, // не сохранять сессию, если нет изменений
+    saveUninitialized: true, // cохранять сессию, даже если она не была изменена
     cookie: {
-      // sameSite: "strict",
-      httpOnly: true, // Куки доступны только по HTTP, недоступны для JavaScript
+      httpOnly: false, // Куки доступны только по HTTP, недоступны для JavaScript
       secure: false, // Установить в true, если используется HTTPS
       maxAge: 24 * 60 * 60 * 1000, // Время жизни сессии в миллисекундах (здесь: 1 день)
     },
-    store: new mongoSessionDB({
-      uri: process.env.DB_URL,
-      collection: "sessions",
-    }),
+    store: sessionStore,
   })
 );
-
-// CORS Headers
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5000");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
-    return res.status(200).json({});
-  }
-  next();
-});
 
 const apiUrl = "/api/v1";
 app.use(`${apiUrl}/categories`, categoryRoutes);
@@ -95,4 +98,4 @@ app.use((error, req, res, next) => {
   });
 });
 
-module.exports = app;
+module.exports = { app, sessionStore };

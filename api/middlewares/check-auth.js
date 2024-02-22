@@ -1,5 +1,5 @@
 module.exports = (req, res, next) => {
-  if (req.session.authorized) {
+  if (req.session.id) {
     // Удаляем ошибку, если она была установлена ранее
     delete req.session.error;
 

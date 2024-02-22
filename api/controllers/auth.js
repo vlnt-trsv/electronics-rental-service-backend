@@ -63,7 +63,7 @@ const verifyCode = async (req, res) => {
 
   if (!enteredCode || !userEmail) {
     return res.status(400).json({
-      message: "Code and email address are required",
+      message: "Код и email обязательны для проверки",
     });
   }
 
@@ -75,10 +75,19 @@ const verifyCode = async (req, res) => {
         message: "Пользователь не найден",
       });
     }
-    if (user) {
-      req.session.user = user;
-      req.session.authorized = true;
-    }
+
+    req.session.user = user;
+    req.session.authorized = true;
+    res.cookie("connect.user", JSON.stringify(user), {
+      secret: process.env.SESSION_SECRET,
+      resave: true, //  сохранять сессию, если нет изменений
+      saveUninitialized: true, // cохранять сессию, даже если она не была изменена
+      cookie: {
+        httpOnly: true,
+        secure: false,
+        maxAge: 24 * 60 * 60 * 1000,
+      },
+    });
 
     const storedCodeRecord = await VerificationCode.findOne({
       userId: user._id,
@@ -93,13 +102,6 @@ const verifyCode = async (req, res) => {
     }
 
     await VerificationCode.deleteOne({ _id: storedCodeRecord._id });
-
-    // // Установка данных пользователя в сессию
-    // req.session.user = {
-    //   _id: user._id,
-    //   email: user.email,
-    // };
-    // req.session.authorized = true
 
     res.status(200).json({
       message: "Успешный вход в систему!",

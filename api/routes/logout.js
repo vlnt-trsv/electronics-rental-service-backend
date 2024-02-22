@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Маршрут для выхода
 router.get("/", (req, res) => {
-  console.log(req.session.user);
+  console.log(res.cookie("connect.user"));
   try {
     if (!req.session.user) {
       // Проверяем наличие информации о пользователе в сессии
