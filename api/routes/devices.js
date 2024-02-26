@@ -9,7 +9,9 @@ const storage = multer.diskStorage({
     cb(null, "./uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname);
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const extension = file.originalname.split('.').pop();
+    cb(null, file.fieldname + "-" + uniqueSuffix + '.' + extension);
   },
 });
 
@@ -40,6 +42,9 @@ router.post(
   upload.single("deviceImage"),
   DevicesController.devices_create_device
 );
+
+// Получение детальной информации о конкретном продукте по categoryId
+router.get("/category/:categoryId", checkAuth, DevicesController.devices_get_device_by_categoryId);
 
 // Получение детальной информации о конкретном продукте
 router.get("/:deviceId", checkAuth, DevicesController.devices_get_device);

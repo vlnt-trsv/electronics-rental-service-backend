@@ -10,6 +10,12 @@ router.get("/", checkAuth, RentalsController.rentals_get_all);
 // Создание нового заказа
 router.post("/", checkAuth, RentalsController.rentals_create_rental);
 
+// Отмена аренды
+router.post("/cancel/:rentalId", checkAuth, RentalsController.rentals_cancel_rental);
+
+// Завершение аренды
+router.post("/complete/:rentalId", checkAuth, RentalsController.rentals_complete_rental);
+
 // Получение детальной информации о конкретном заказе
 router.get("/:rentalId", checkAuth, RentalsController.rentals_get_rental);
 
