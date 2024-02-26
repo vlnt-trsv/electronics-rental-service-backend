@@ -8,6 +8,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
 const mongoSessionDB = require("connect-mongodb-session")(session);
+const path = require("path");
 
 
 // Routes
@@ -49,7 +50,7 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Настройка сессии
 app.use(cookieParser());
