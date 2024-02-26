@@ -2,12 +2,15 @@ const mongoose = require("mongoose");
 
 const Rental = require("../models/rental");
 const Device = require("../models/device");
+const User = require("../models/user");
 
 // Получение списка всех заказов
 exports.rentals_get_all = (req, res, next) => {
   Rental.find()
-    .select("device quantity _id")
-    .populate("device", "name")
+    // .select("device category subscriptionOptions status")
+    // .populate("device", "_id name deviceImage")
+    // .populate("category", "_id name")
+    // .populate("subscriptionOptions")
     .exec()
     .then((docs) => {
       res.status(200).json({
@@ -16,10 +19,13 @@ exports.rentals_get_all = (req, res, next) => {
           return {
             _id: doc._id,
             device: doc.device,
-            quantity: doc.quantity,
+            category: doc.category,
+            subscriptionOptions: doc.subscriptionOptions,
+            status: doc.status,
+            startDate: doc.startDate,
             request: {
               type: "GET",
-              url: "http://localhost:5000/api/v1/rentals/" + doc._id,
+              url: "http://localhost:8000/api/v1/rentals/" + doc._id,
             },
           };
         }),
@@ -31,47 +37,118 @@ exports.rentals_get_all = (req, res, next) => {
 };
 
 // Создание нового заказа
-exports.rentals_create_rental = (req, res, next) => {
-  Device.findById(req.body.deviceId)
-    .then((device) => {
-      if (!device) {
-        return res.status(404).json({
-          message: "Device not found",
-        });
-      }
-      const rental = new Rental({
-        _id: new mongoose.Types.ObjectId(),
-        quantity: req.body.quantity,
-        device: req.body.deviceId,
-      });
-      return rental.save().then((result) => {
-        // Возвращаем результат и устройство (device), чтобы получить доступ к цене
-        return { rental: result, device: device };
-      });
-    })
-    .then(({ rental, device }) => {
-      console.log(rental);
-      res.status(201).json({
-        message: "Rentals stored",
-        createdRentals: {
-          _id: rental._id,
-          device: rental.device,
-          quantity: rental.quantity,
-          price: device.price,
-        },
-        request: {
-          type: "GET",
-          url: "http://localhost:5000/api/v1/rentals/" + rental._id,
-        },
-      });
-    })
-    .catch((err) => {
-      console.log(err);
-      if (!res.headersSent) {
-        // Проверка, был ли уже отправлен ответ
-        res.status(500).json({ error: err });
-      }
+exports.rentals_create_rental = async (req, res, next) => {
+  try {
+    const { deviceId, subscriptionOptionsId, userId } = req.body;
+
+    // Найти устройство по идентификатору
+    const device = await Device.findById(deviceId).populate("categoryId");
+    if (!device) {
+      return res.status(404).json({ message: "Device not found" });
+    }
+
+    // Найти выбранную опцию аренды
+    const selectedOption = device.subscriptionOptions.find(
+      (option) => option._id.toString() === subscriptionOptionsId
+    );
+    if (!selectedOption) {
+      return res.status(400).json({ message: "Invalid subscription option" });
+    }
+
+    // Получить пользователя по userId
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Создать новую аренду
+    const rental = new Rental({
+      _id: new mongoose.Types.ObjectId(),
+      device: {
+        _id: device._id,
+        name: device.name,
+        deviceImage: device.deviceImage,
+      },
+      category: {
+        _id: device.categoryId._id,
+        name: device.categoryId.name,
+      },
+      subscriptionOptions: {
+        _id: selectedOption._id,
+        duration: selectedOption.duration,
+        price: selectedOption.price,
+      },
+      user: user._id,
+      status: "Не оплачено",
+      startDate: new Date(),
     });
+
+    // Сохранить аренду в базе данных
+    const result = await rental.save();
+    res.status(201).json({
+      message: "Rental created successfully",
+      createdRental: result,
+      request: {
+        type: "GET",
+        url: "http://localhost:8000/api/v1/rentals/" + rental._id,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Отмена аренды
+exports.rentals_cancel_rental = async (req, res) => {
+  try {
+    const rentalId = req.params.id;
+    const rental = await Rental.findById(rentalId);
+
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+
+    // Проверяем, можно ли отменить аренду
+    if (new Date(rental.startDate) < new Date()) {
+      return res
+        .status(400)
+        .json({ message: "Cannot cancel rental after start date" });
+    }
+
+    // Отменяем аренду
+    rental.status = "cancelled";
+    await rental.save();
+
+    res.json(rental);
+  } catch (error) {
+    res.status(500).json({ message: "An error occurred", error });
+  }
+};
+
+// Завершение аренды
+exports.rentals_complete_rental = async (req, res) => {
+  try {
+    const rentalId = req.params.id;
+    const rental = await Rental.findById(rentalId);
+
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+
+    // Проверяем, закончилась ли аренда
+    if (new Date() < new Date(rental.endDate)) {
+      return res.status(400).json({ message: "Rental has not ended" });
+    }
+
+    // Завершаем аренду
+    rental.status = "completed";
+    await rental.save();
+
+    res.json(rental);
+  } catch (error) {
+    res.status(500).json({ message: "An error occurred", error });
+  }
 };
 
 // Получение детальной информации о конкретном заказе
@@ -102,7 +179,7 @@ exports.rentals_get_rental = (req, res, next) => {
 exports.rentals_update_rental = (req, res, next) => {
   const id = req.params.rentalId;
   const updateOps = req.body;
-  
+
   Rental.findByIdAndUpdate(id, { $set: updateOps }, { new: true })
     .exec()
     .then((updatedRental) => {
@@ -136,7 +213,6 @@ exports.rentals_delete_rental = (req, res, next) => {
           url: "http://localhost:5000/api/v1/rentals",
           body: {
             deviceId: "ID",
-            quantity: "Number",
           },
         },
       });
