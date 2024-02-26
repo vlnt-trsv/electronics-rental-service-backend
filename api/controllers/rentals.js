@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const Rental = require("../models/rental");
 const Device = require("../models/device");
 const User = require("../models/user");
+const Payment = require("../models/payment");
+
+const { processPayment } = require("../service/paymentService");
 
 // Получение списка всех заказов
 exports.rentals_get_all = (req, res, next) => {
@@ -22,7 +25,9 @@ exports.rentals_get_all = (req, res, next) => {
             category: doc.category,
             subscriptionOptions: doc.subscriptionOptions,
             status: doc.status,
+            rentalDate: doc.rentalDate,
             startDate: doc.startDate,
+            endDate: doc.endDate,
             request: {
               type: "GET",
               url: "http://localhost:8000/api/v1/rentals/" + doc._id,
@@ -64,6 +69,8 @@ exports.rentals_create_rental = async (req, res, next) => {
     // Создать новую аренду
     const rental = new Rental({
       _id: new mongoose.Types.ObjectId(),
+      user: user._id,
+      rentalDate: new Date(),
       device: {
         _id: device._id,
         name: device.name,
@@ -78,9 +85,7 @@ exports.rentals_create_rental = async (req, res, next) => {
         duration: selectedOption.duration,
         price: selectedOption.price,
       },
-      user: user._id,
       status: "Не оплачено",
-      startDate: new Date(),
     });
 
     // Сохранить аренду в базе данных
@@ -99,10 +104,99 @@ exports.rentals_create_rental = async (req, res, next) => {
   }
 };
 
+// Оплата аренды
+exports.rentals_pay_rental = async (req, res, next) => {
+  try {
+    const rentalId = req.params.rentalId;
+    const { paymentDetails } = req.body; // Предполагается, что платежные реквизиты будут отправлены в теле запроса
+
+    // Поиск аренды по идентификатору
+    const rental = await Rental.findById(rentalId);
+
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+
+    // Обработка платежа
+    const paymentResult = await processPayment(paymentDetails);
+
+    if (!paymentResult.success) {
+      // Если платеж не прошел, обновляем статус аренды и сохраняем аренду
+      rental.status = "Ошибка оплаты";
+      await rental.save();
+
+      return res
+        .status(400)
+        .json({ message: "Payment failed", error: paymentResult.error });
+    }
+
+    // Если платеж прошел успешно, создаем новый платеж в базе данных
+    const payment = new Payment({
+      rental: rentalId,
+      amount: rental.subscriptionOptions.price, // Предполагается, что цена аренды хранится в аренде
+      status: "Оплачено",
+    });
+
+    // Сохраняем платеж в базе данных
+    await payment.save();
+
+    // Обновление статуса аренды до "Оплачено".
+    rental.status = "Оплачено";
+    rental.startDate = new Date(); // Установка даты начала аренды
+    rental.endDate = new Date(
+      Date.now() + rental.subscriptionOptions.duration * 24 * 60 * 60 * 1000
+    ); // Установка даты окончания аренды
+    await rental.save();
+
+    res.status(200).json({
+      message: "Payment successful",
+      rental: rental,
+      payment: payment,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "An error occurred", error });
+  }
+};
+
+// Изменение статуса аренды на "В аренде"
+// Назначает администратор
+exports.rentals_start_rental = async (req, res) => {
+  try {
+    const rentalId = req.params.rentalId;
+
+    // Найти аренду по идентификатору
+    const rental = await Rental.findById(rentalId);
+
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+
+    // Проверяем, оплачена ли аренда
+    if (rental.status !== "Оплачено") {
+      return res
+        .status(400)
+        .json({ message: "Аренда не оплачена, старт невозможен" });
+    }
+
+    // Ставим аренду в статус "В аренде"
+    rental.status = "В аренде";
+    await rental.save();
+
+    res.status(200).json({
+      message: "Аренда успешно начата",
+      rental: rental,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Произошла ошибка при старте аренды", error });
+  }
+};
+
 // Отмена аренды
 exports.rentals_cancel_rental = async (req, res) => {
   try {
-    const rentalId = req.params.id;
+    const rentalId = req.params.rentalId;
     const rental = await Rental.findById(rentalId);
 
     if (!rental) {
@@ -113,14 +207,24 @@ exports.rentals_cancel_rental = async (req, res) => {
     if (new Date(rental.startDate) < new Date()) {
       return res
         .status(400)
-        .json({ message: "Cannot cancel rental after start date" });
+        .json({ message: "Невозможно отменить аренду после даты начала" });
+    }
+
+    // Проверяем, можно ли отменить аренду
+    if (rental.status === "Оплачено") {
+      return res
+        .status(400)
+        .json({ message: "Невозможно отменить оплаченную аренду" });
     }
 
     // Отменяем аренду
-    rental.status = "cancelled";
+    rental.status = "Отменено";
     await rental.save();
 
-    res.json(rental);
+    res.status(200).json({
+      message: "Аренда успешно отменена",
+      rental: rental,
+    });
   } catch (error) {
     res.status(500).json({ message: "An error occurred", error });
   }
@@ -129,23 +233,26 @@ exports.rentals_cancel_rental = async (req, res) => {
 // Завершение аренды
 exports.rentals_complete_rental = async (req, res) => {
   try {
-    const rentalId = req.params.id;
+    const rentalId = req.params.rentalId;
     const rental = await Rental.findById(rentalId);
 
     if (!rental) {
       return res.status(404).json({ message: "Rental not found" });
     }
 
-    // Проверяем, закончилась ли аренда
-    if (new Date() < new Date(rental.endDate)) {
-      return res.status(400).json({ message: "Rental has not ended" });
-    }
+    // // Проверяем, закончилась ли аренда
+    // if (new Date() < new Date(rental.endDate)) {
+    //   return res.status(400).json({ message: "Аренда еще не закончилась" });
+    // }
 
     // Завершаем аренду
-    rental.status = "completed";
+    rental.status = "Завершено";
     await rental.save();
 
-    res.json(rental);
+    res.status(200).json({
+      message: "Аренда успешно завершена",
+      rental: rental,
+    });
   } catch (error) {
     res.status(500).json({ message: "An error occurred", error });
   }
@@ -212,7 +319,9 @@ exports.rentals_delete_rental = (req, res, next) => {
           type: "POST",
           url: "http://localhost:5000/api/v1/rentals",
           body: {
-            deviceId: "ID",
+            deviceId: "String",
+            subscriptionOptionsId: "String",
+            userId: "String",
           },
         },
       });
