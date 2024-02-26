@@ -8,13 +8,21 @@ const RentalsController = require("../controllers/rentals");
 router.get("/", checkAuth, RentalsController.rentals_get_all);
 
 // Создание нового заказа
-router.post("/", checkAuth, RentalsController.rentals_create_rental);
+router.post("/create", checkAuth, RentalsController.rentals_create_rental);
+
+// Оплата аренды
+router.post("/:rentalId/pay", checkAuth, RentalsController.rentals_pay_rental);
+
+// Изменение статуса аренды на "В аренде" 
+// ТОЛЬКО ДЛЯ ЕСЛИ ПОЛЬЗОВАТЕЛЬ ПОЛУЧИЛ ДЕВАЙС ИЗ ПУНКТА ВЫДАЧА
+// Назначает администратор 
+router.post("/:rentalId/start", checkAuth, RentalsController.rentals_start_rental);
 
 // Отмена аренды
-router.post("/cancel/:rentalId", checkAuth, RentalsController.rentals_cancel_rental);
+router.post("/:rentalId/cancel", checkAuth, RentalsController.rentals_cancel_rental);
 
 // Завершение аренды
-router.post("/complete/:rentalId", checkAuth, RentalsController.rentals_complete_rental);
+router.post("/:rentalId/complete", checkAuth, RentalsController.rentals_complete_rental);
 
 // Получение детальной информации о конкретном заказе
 router.get("/:rentalId", checkAuth, RentalsController.rentals_get_rental);
