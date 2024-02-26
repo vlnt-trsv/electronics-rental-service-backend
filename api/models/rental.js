@@ -4,6 +4,7 @@ const User = require("./user");
 const Payment = require("./payment");
 
 const rentalSchema = mongoose.Schema({
+  _id: mongoose.Schema.Types.ObjectId,
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -13,7 +14,7 @@ const rentalSchema = mongoose.Schema({
     _id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Device",
-      required: true,
+      required: [true, "Выберите девайса"],
     },
     name: {
       type: String,
@@ -51,12 +52,15 @@ const rentalSchema = mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Не оплачено", "Оплачено", "Завершено", "В аренде"],
+    enum: ["Не оплачено", "Оплачено", "Завершено", "В аренде", "Отменено"],
     default: "Не оплачено",
+  },
+  rentalDate: {
+    type: Date,
+    required: true,
   },
   startDate: {
     type: Date,
-    default: Date.now,
     required: false,
   },
   endDate: {
