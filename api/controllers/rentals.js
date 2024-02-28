@@ -9,11 +9,16 @@ const { processPayment } = require("../service/paymentService");
 
 // Получение списка всех заказов
 exports.rentals_get_all = (req, res, next) => {
-  Rental.find()
-    // .select("device category subscriptionOptions status")
-    // .populate("device", "_id name deviceImage")
-    // .populate("category", "_id name")
-    // .populate("subscriptionOptions")
+  const status = req.query.status;
+  const userId = req.query.userId;
+  let filter = { user: userId };
+
+  // Если статус указан, добавляем фильтр
+  if (status) {
+    filter.status = status;
+  }
+
+  Rental.find(filter)
     .exec()
     .then((docs) => {
       res.status(200).json({
@@ -21,9 +26,12 @@ exports.rentals_get_all = (req, res, next) => {
         rentals: docs.map((doc) => {
           return {
             _id: doc._id,
+            userId: doc.user,
             device: doc.device,
             category: doc.category,
             subscriptionOptions: doc.subscriptionOptions,
+            deliveryMethod: doc.deliveryMethod,
+            deliveryCost: doc.deliveryCost,
             status: doc.status,
             rentalDate: doc.rentalDate,
             startDate: doc.startDate,
@@ -44,7 +52,8 @@ exports.rentals_get_all = (req, res, next) => {
 // Создание нового заказа
 exports.rentals_create_rental = async (req, res, next) => {
   try {
-    const { deviceId, subscriptionOptionsId, userId } = req.body;
+    const { deviceId, subscriptionOptionsId, userId, deliveryMethod } =
+      req.body;
 
     // Найти устройство по идентификатору
     const device = await Device.findById(deviceId).populate("categoryId");
@@ -85,6 +94,7 @@ exports.rentals_create_rental = async (req, res, next) => {
         duration: selectedOption.duration,
         price: selectedOption.price,
       },
+      deliveryMethod: deliveryMethod,
       status: "Не оплачено",
     });
 
@@ -117,6 +127,9 @@ exports.rentals_pay_rental = async (req, res, next) => {
       return res.status(404).json({ message: "Rental not found" });
     }
 
+    // Определение стоимости доставки
+    const deliveryCost = 240;
+
     // Обработка платежа
     const paymentResult = await processPayment(paymentDetails);
 
@@ -131,9 +144,13 @@ exports.rentals_pay_rental = async (req, res, next) => {
     }
 
     // Если платеж прошел успешно, создаем новый платеж в базе данных
+    const totalAmount = rental.subscriptionOptions.price + deliveryCost;
+
+    // Если платеж прошел успешно, создаем новый платеж в базе данных
     const payment = new Payment({
+      user: rental.user._id,
       rental: rentalId,
-      amount: rental.subscriptionOptions.price, // Предполагается, что цена аренды хранится в аренде
+      amount: totalAmount, // Предполагается, что цена аренды хранится в аренде
       status: "Оплачено",
     });
 
@@ -204,7 +221,7 @@ exports.rentals_cancel_rental = async (req, res) => {
     }
 
     // Проверяем, можно ли отменить аренду
-    if (new Date(rental.startDate) < new Date()) {
+    if (new Date(rental.startDate) > new Date()) {
       return res
         .status(400)
         .json({ message: "Невозможно отменить аренду после даты начала" });
@@ -245,8 +262,14 @@ exports.rentals_complete_rental = async (req, res) => {
     //   return res.status(400).json({ message: "Аренда еще не закончилась" });
     // }
 
+    // // Вычисляем startDate как endDate минус продолжительность аренды
+    // const durationInMilliseconds = rental.subscriptionOptions.duration * 24 * 60 * 60 * 1000;
+    // const startDate = new Date(rental.endDate.getTime() - durationInMilliseconds);
+
     // Завершаем аренду
     rental.status = "Завершено";
+    startDate = rental.startDate;
+    endDate = rental.endDate;
     await rental.save();
 
     res.status(200).json({
