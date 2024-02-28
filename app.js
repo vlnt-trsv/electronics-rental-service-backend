@@ -18,6 +18,7 @@ const rentalsRoutes = require("./api/routes/rentals");
 const userRoutes = require("./api/routes/user");
 const authRoutes = require("./api/routes/auth");
 const logoutRoutes = require("./api/routes/logout");
+const paymentRoutes = require("./api/routes/payment");
 // const adminRoutes = require("./api/routes/admin");
 
 mongoose
@@ -81,6 +82,7 @@ app.use(`${apiUrl}/rentals`, rentalsRoutes);
 app.use(`${apiUrl}/user`, userRoutes);
 app.use(`${apiUrl}/login`, authRoutes);
 app.use(`${apiUrl}/logout`, logoutRoutes);
+app.use(`${apiUrl}/payments`, paymentRoutes);
 // app.use(`/admin`, adminRoutes);
 
 // Error handling
