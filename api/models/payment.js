@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
+const User = require("./user");
 
 const paymentSchema = mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   rental: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Rental",

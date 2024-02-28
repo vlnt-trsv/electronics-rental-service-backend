@@ -50,6 +50,15 @@ const rentalSchema = mongoose.Schema({
       required: true,
     },
   },
+  deliveryMethod: {
+    type: String,
+    enum: ["Доставка", "Самовывоз"],
+    required: [true, "Выберите способ доставки"],
+  },
+  deliveryCost: {
+    type: Number,
+    default: 0,
+  },
   status: {
     type: String,
     enum: ["Не оплачено", "Оплачено", "Завершено", "В аренде", "Отменено"],
@@ -72,6 +81,15 @@ const rentalSchema = mongoose.Schema({
     ref: "Payment",
     required: false,
   },
+});
+
+rentalSchema.pre('save', function(next) {
+  if (this.deliveryMethod === "Доставка") {
+    this.deliveryCost = 240;
+  } else {
+    this.deliveryCost = 0;
+  }
+  next();
 });
 
 module.exports = mongoose.model("Rental", rentalSchema);

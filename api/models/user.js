@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Payment = require("../models/payment");
 
 const userSchema = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
@@ -9,15 +10,15 @@ const userSchema = mongoose.Schema({
   },
   firstName: {
     type: String,
-    default: "null",
+    default: "",
   },
   lastName: {
     type: String,
-    default: "null",
+    default: "",
   },
   patronymic: {
     type: String,
-    default: "null",
+    default: "",
   },
   email: {
     type: String,
@@ -28,7 +29,7 @@ const userSchema = mongoose.Schema({
   },
   phone: {
     type: String,
-    default: "null",
+    default: "",
   },
   consentToPrivacyPolicy: {
     type: Boolean,
@@ -42,6 +43,10 @@ const userSchema = mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  payments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Payment"
+  }]
 });
 
 module.exports = mongoose.model("User", userSchema);
