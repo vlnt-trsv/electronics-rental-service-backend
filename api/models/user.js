@@ -1,35 +1,24 @@
 const mongoose = require("mongoose");
+const Payment = require("../models/payment");
 
 const userSchema = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
-  roles: {
-    User: {
-      type: Number,
-      default: 2001,
-    },
-    Editor: Number,
-    Admin: Number,
-  },
-  refreshTokens: [
-    {
-      type: String,
-    },
-  ],
-  accessToken: {
+  role: {
     type: String,
-    default: null,
+    enum: ["User", "Editor", "Admin"],
+    default: "User",
   },
   firstName: {
     type: String,
-    default: "null", // или любое другое значение по умолчанию
+    default: "",
   },
   lastName: {
     type: String,
-    default: "null",
+    default: "",
   },
   patronymic: {
     type: String,
-    default: "null",
+    default: "",
   },
   email: {
     type: String,
@@ -40,7 +29,7 @@ const userSchema = mongoose.Schema({
   },
   phone: {
     type: String,
-    default: "null",
+    default: "",
   },
   consentToPrivacyPolicy: {
     type: Boolean,
@@ -54,10 +43,10 @@ const userSchema = mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  verificationCode: {
-    type: String,
-    default: null,
-  },
+  payments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Payment"
+  }]
 });
 
 module.exports = mongoose.model("User", userSchema);

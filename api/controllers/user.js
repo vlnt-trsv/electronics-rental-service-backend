@@ -1,5 +1,6 @@
 require("dotenv").config();
 const User = require("../models/user");
+const sessionStore = require("../../app");
 
 // Получение списка всех пользователей
 exports.user_get_all = (req, res, next) => {
@@ -48,7 +49,6 @@ exports.user_get_user = (req, res, next) => {
         consentToPrivacyPolicy: user.consentToPrivacyPolicy,
         consentToDataProcessing: user.consentToDataProcessing,
         consentToReceiveNotifications: user.consentToReceiveNotifications,
-        verificationCode: user.verificationCode,
       };
 
       res.status(200).json({
@@ -80,13 +80,19 @@ exports.user_update = async (req, res) => {
     }
 
     Object.keys(req.body).forEach((field) => {
-      existingUser[field] = req.body[field];
+      // Проверяем, чтобы не обновлять connect.sid и другие системные поля
+      if (!["connect.user" /* другие системные поля */].includes(field)) {
+        existingUser[field] = req.body[field];
+      }
     });
 
     try {
       const updatedUser = await existingUser.save();
       console.log("User updated successfully:", updatedUser);
-      res.status(200).json({ message: "User data updated successfully" });
+      res.cookie("connect.user", JSON.stringify(updatedUser), {});
+      res
+        .status(200)
+        .json({ message: "User data updated successfully", updatedUser });
     } catch (error) {
       console.error("Error saving updated user:", error);
       res.status(500).json({ error: "Internal server error" });

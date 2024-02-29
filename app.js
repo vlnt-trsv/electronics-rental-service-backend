@@ -1,31 +1,28 @@
 require("dotenv").config();
 
 const express = require("express");
+const app = express();
+const session = require("express-session");
+const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
-const session = require("express-session");
-const passport = require("passport");
-const flash = require("connect-flash");
+const mongoSessionDB = require("connect-mongodb-session")(session);
+const path = require("path");
 
-// Swagger
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./swagger/swaggerSpec");
 
 // Routes
-const productsRoutes = require("./api/routes/products");
-const ordersRoutes = require("./api/routes/orders");
+const categoryRoutes = require('./api/routes/category');
+const devicesRoutes = require("./api/routes/devices");
+const rentalsRoutes = require("./api/routes/rentals");
 const userRoutes = require("./api/routes/user");
 const authRoutes = require("./api/routes/auth");
-const refreshRoutes = require("./api/routes/refresh");
 const logoutRoutes = require("./api/routes/logout");
-const adminRoutes = require("./api/routes/admin");
-
-const app = express();
-const DB_URL = process.env.DB_URL;
+const paymentRoutes = require("./api/routes/payment");
+// const adminRoutes = require("./api/routes/admin");
 
 mongoose
-  .connect(DB_URL)
+  .connect(process.env.DB_URL)
   .then(() => {
     console.log("MongoDB Connected");
   })
@@ -34,55 +31,58 @@ mongoose
   });
 
 mongoose.Promise = global.Promise;
-
-app.use(cors({ credentials: true, origin: "http://localhost:5000" }));
+app.set("view engine", "ejs");
+app.use(
+  cors({
+    credentials: true,
+    origin: "http://localhost:5000",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-SESSION-ID",
+      "X-SESSION-USER",
+    ],
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Настройка сессии
+app.use(cookieParser());
+
+const sessionStore = new mongoSessionDB({
+  uri: process.env.DB_URL,
+  collection: "sessions",
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
+    resave: false, // не сохранять сессию, если нет изменений
+    saveUninitialized: true, // cохранять сессию, даже если она не была изменена
     cookie: {
-      httpOnly: true,
-      sameSite: "None",
-      secure: false,
+      httpOnly: false, // Куки доступны только по HTTP, недоступны для JavaScript
+      secure: false, // Установить в true, если используется HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // Время жизни сессии в миллисекундах (здесь: 1 день)
     },
+    store: sessionStore,
   })
 );
 
-// Инициализация Passport
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(flash());
-
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// CORS Headers
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5000");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
-    return res.status(200).json({});
-  }
-  next();
-});
-
 const apiUrl = "/api/v1";
-app.use(`${apiUrl}/products`, productsRoutes);
-app.use(`${apiUrl}/orders`, ordersRoutes);
+app.use(`${apiUrl}/categories`, categoryRoutes);
+app.use(`${apiUrl}/devices`, devicesRoutes);
+app.use(`${apiUrl}/rentals`, rentalsRoutes);
 app.use(`${apiUrl}/user`, userRoutes);
 app.use(`${apiUrl}/login`, authRoutes);
 app.use(`${apiUrl}/logout`, logoutRoutes);
-app.use(`${apiUrl}/refreshToken`, refreshRoutes);
+app.use(`${apiUrl}/payments`, paymentRoutes);
 // app.use(`/admin`, adminRoutes);
 
 // Error handling
@@ -101,4 +101,4 @@ app.use((error, req, res, next) => {
   });
 });
 
-module.exports = app;
+module.exports = { app, sessionStore };

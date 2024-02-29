@@ -4,6 +4,6 @@ const router = express.Router();
 
 // Маршруты для аутентификации
 router.post("/", AuthController.handleLogin);
-router.post("/verify", AuthController.verifyCode); 
+router.post("/verify", AuthController.verifyCode);
 
 module.exports = router;
