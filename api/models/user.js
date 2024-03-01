@@ -8,6 +8,10 @@ const userSchema = mongoose.Schema({
     enum: ["User", "Editor", "Admin"],
     default: "User",
   },
+  nickname: {
+    type: String,
+    default: "",
+  },
   firstName: {
     type: String,
     default: "",
