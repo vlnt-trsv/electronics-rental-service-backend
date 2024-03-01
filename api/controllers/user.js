@@ -17,7 +17,7 @@ exports.user_get_all = (req, res, next) => {
             nickname: doc.nickname,
             request: {
               type: "GET",
-              url: "http://localhost:5000/api/v1/user/" + doc._id,
+              url: "http://localhost:8000/api/v1/user/" + doc._id,
             },
           };
         }),
@@ -42,6 +42,7 @@ exports.user_get_user = (req, res, next) => {
       const userData = {
         _id: user._id,
         email: user.email,
+        nickname: user.nickname,
         firstName: user.firstName,
         lastName: user.lastName,
         patronymic: user.patronymic,
@@ -55,7 +56,7 @@ exports.user_get_user = (req, res, next) => {
         user: userData,
         request: {
           type: "GET",
-          url: "http://localhost:5000/api/v1/user",
+          url: "http://localhost:8000/api/v1/user",
         },
       });
     })
